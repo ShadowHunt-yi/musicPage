@@ -1,6 +1,9 @@
 name = "music-player"
 main = "worker.js"
-compatibility_date = "2023-10-30"
+compatibility_date = "2024-09-02"
 
-[site]
-bucket = "./"
+# 移除 [site] 配置，使用 worker.js 作为主入口
+# [site] 配置会让 Wrangler 优先使用静态文件而不是 Worker
+
+[env.production]
+compatibility_flags = ["nodejs_compat"]

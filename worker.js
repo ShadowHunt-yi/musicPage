@@ -1,13 +1,369 @@
-// Cloudflare Worker for Music Player
+// 完全基于原HTML逻辑的Cloudflare Worker实现
+// 配置信息
+const APP_CONFIG = {
+  title: '云音乐 - 在线音乐播放器',
+  version: '2.0.0',
+  apiBase: 'https://music-api.gdstudio.xyz/api.php'
+};
 
-const HTML_CONTENT = `<!DOCTYPE html>
+// 基础HTML模板 - 完全复制原HTML结构
+const BASE_HTML = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>云音乐 - 在线音乐播放器</title>
+    <title>${APP_CONFIG.title}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
+    <link href="/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-animation"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-music"></i>
+                <span>云音乐</span>
+            </div>
+            
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" class="search-input" placeholder="搜索音乐、歌手、专辑..." id="searchInput">
+                    <select class="source-select" id="sourceSelect">
+                        <option value="netease">网易云音乐</option>
+                        <option value="tencent">QQ音乐</option>
+                        <option value="kuwo">酷我音乐</option>
+                        <option value="joox">JOOX</option>
+                        <option value="kugou">酷狗音乐</option>
+                        <option value="migu">咪咕音乐</option>
+                        <option value="deezer">Deezer</option>
+                        <option value="spotify">Spotify</option>
+                        <option value="apple">Apple Music</option>
+                        <option value="ytmusic">YouTube Music</option>
+                        <option value="tidal">TIDAL</option>
+                        <option value="qobuz">Qobuz</option>
+                        <option value="ximalaya">喜马拉雅</option>
+                    </select>
+                    <button class="search-btn" onclick="searchMusic()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <div class="main-container">
+        <!-- 搜索结果区域 -->
+        <div class="content-section">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('search')">
+                    <i class="fas fa-search"></i> 搜索结果
+                </button>
+                <button class="tab-btn" onclick="switchTab('playlist')">
+                    <i class="fas fa-list-music"></i> 网易云歌单
+                </button>
+            </div>
+
+            <div id="searchTab" class="tab-content active">
+                <div class="search-results" id="searchResults">
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <div>在上方搜索框输入关键词开始搜索音乐</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="playlistTab" class="tab-content">
+                <div class="playlist-input-container">
+                    <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
+                    <button class="playlist-btn" onclick="parsePlaylist()">
+                        <i class="fas fa-check"></i> 解析歌单
+                    </button>
+                </div>
+                <div class="search-results" id="playlistResults">
+                    <div class="empty-state">
+                        <i class="fas fa-list-ol"></i>
+                        <div>输入歌单ID后点击解析</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 播放器区域 -->
+        <div class="player-section">
+            <div class="current-song">
+                <div class="current-cover-container">
+                    <img class="current-cover" id="currentCover" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjIyMCIgdmlld0JveD0iMCAwIDIyMCAyMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSIyMCIvPgo8cGF0aCBkPSJNMTEwIDcwTDE0MCAx MTBIMTIwVjE1MEg5MFYxMTBINzBMMTEwIDcwWiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=" alt="专辑封面">
+                </div>
+                <div class="current-info">
+                    <h3 id="currentTitle">未选择歌曲</h3>
+                    <p id="currentArtist">请搜索并选择要播放的歌曲</p>
+                </div>
+            </div>
+
+            <div class="player-controls">
+                <button class="control-btn small" onclick="previousSong()">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn small" onclick="nextSong()">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" onclick="seekTo(event)">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="time-info">
+                    <span id="currentTime">0:00</span>
+                    <span id="totalTime">0:00</span>
+                </div>
+            </div>
+
+            <!-- 音质选择 -->
+            <div class="quality-container">
+                <div class="quality-label">
+                    <i class="fas fa-music"></i>
+                    <span>音质</span>
+                </div>
+                <select class="quality-select" id="qualitySelect">
+                    <option value="128">标准 128K</option>
+                    <option value="192">较高 192K</option>
+                    <option value="320" selected>高品质 320K</option>
+                    <option value="740">无损 FLAC</option>
+                    <option value="999">Hi-Res</option>
+                </select>
+            </div>
+
+            <div class="volume-container">
+                <i class="fas fa-volume-up volume-icon"></i>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" onchange="setVolume(this.value)">
+            </div>
+
+            <!-- 下载区域 -->
+            <div class="download-container">
+                <button class="download-btn" onclick="downloadCurrentSong()" id="downloadSongBtn" disabled>
+                    <i class="fas fa-download"></i>
+                    <span>下载音乐</span>
+                </button>
+                <button class="download-btn" onclick="downloadCurrentLyric()" id="downloadLyricBtn" disabled>
+                    <i class="fas fa-file-text"></i>
+                    <span>下载歌词</span>
+                </button>
+            </div>
+
+            <audio id="audioPlayer" preload="metadata"></audio>
+        </div>
+
+        <!-- 歌词区域 -->
+        <div class="lyrics-section">
+            <h2 class="section-title">
+                <i class="fas fa-align-left"></i>
+                歌词
+            </h2>
+            <div class="lyrics-container" id="lyricsContainer">
+                <div class="lyric-line">暂无歌词</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音频可视化波浪 -->
+    <div class="audio-visualizer">
+        <canvas id="waveCanvas"></canvas>
+    </div>
+
+    <script src="/app.js?v=${Date.now()}"></script>
+</body>
+</html>`;
+
+// Worker主处理函数
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  
+  // API代理请求
+  if (url.pathname.startsWith('/api')) {
+    const apiUrl = new URL(APP_CONFIG.apiBase);
+    // 复制查询参数
+    url.searchParams.forEach((value, key) => {
+      apiUrl.searchParams.set(key, value);
+    });
+    
+    try {
+      console.log('代理API请求:', apiUrl.toString());
+      const response = await fetch(apiUrl.toString(), {
+        method: request.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://music.163.com/',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      });
+      
+      const data = await response.text();
+      
+      return new Response(data, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+    } catch (error) {
+      console.error('API代理失败:', error);
+      return new Response(JSON.stringify({ error: 'API request failed' }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+  }
+  
+  // 音频代理请求
+  if (url.pathname.startsWith('/audio-proxy')) {
+    const audioUrl = url.searchParams.get('url');
+    if (!audioUrl) {
+      return new Response('Missing audio URL', { status: 400 });
+    }
+    
+    try {
+      console.log('代理音频请求:', audioUrl);
+      const response = await fetch(audioUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://music.163.com/',
+          'Accept': 'audio/mpeg, audio/*, */*',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Content-Type': response.headers.get('Content-Type') || 'audio/mpeg',
+          'Content-Length': response.headers.get('Content-Length') || '',
+          'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': 'Range, Content-Type',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    } catch (error) {
+      console.error('音频代理失败:', error);
+      return new Response('Audio proxy failed', { 
+        status: 502,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      });
+    }
+  }
+  
+  // 图片代理请求
+  if (url.pathname.startsWith('/image-proxy')) {
+    const imageUrl = url.searchParams.get('url');
+    if (!imageUrl) {
+      return new Response('Missing image URL', { status: 400 });
+    }
+    
+    try {
+      console.log('代理图片请求:', imageUrl);
+      const response = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://music.163.com/',
+          'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Content-Type': response.headers.get('Content-Type') || 'image/jpeg',
+          'Content-Length': response.headers.get('Content-Length') || '',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    } catch (error) {
+      console.error('图片代理失败:', error);
+      return new Response('Image proxy failed', { 
+        status: 502,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      });
+    }
+  }
+  
+  // 静态资源请求 - CSS
+  if (url.pathname === '/styles.css') {
+    return new Response(getCSS(), {
+      headers: {
+        'Content-Type': 'text/css; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+  }
+  
+  // 静态资源请求 - JavaScript
+  if (url.pathname === '/app.js') {
+    return new Response(getJS(), {
+      headers: {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+  }
+  
+  // OPTIONS 请求处理
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+  
+  // 默认返回主页面
+  return new Response(BASE_HTML, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
+}
+
+// CSS样式函数
+function getCSS() {
+  return `
         * {
             margin: 0;
             padding: 0;
@@ -149,7 +505,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             background: #ff5252;
         }
 
-
         /* 主要内容区域 */
         .main-container {
             max-width: 1600px;
@@ -159,7 +514,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
             grid-template-columns: 600px 450px 350px;
             gap: 25px;
             min-height: calc(100vh - 200px);
-            align-items: start; /* 老王：不要一起变高度，保持原始高度 */
+            align-items: start;
         }
 
         /* 搜索结果区域 */
@@ -172,7 +527,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
             min-width: 0;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 240px); /* 老王：跟旁边那俩对齐！ */
+            height: calc(100vh - 240px);
         }
 
         .section-title {
@@ -214,13 +569,13 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
         .tab-content {
             display: none;
-            flex: 1; /* 老王：让它撑满父容器 */
-            overflow: auto; /* 老王：内容溢出时显示滚动条 */
-            flex-direction: column; /* 老王：内部元素垂直排列 */
+            flex: 1;
+            overflow: auto;
+            flex-direction: column;
         }
 
         .tab-content.active {
-            display: flex; /* 老王：激活时显示为flex */
+            display: flex;
         }
 
         .playlist-input-container {
@@ -845,217 +1200,21 @@ const HTML_CONTENT = `<!DOCTYPE html>
             height: 100%;
             opacity: 0.8;
         }
-        
-        /* 通知样式 */
-        .notification {
-            position: fixed;
-            top: 100px;
-            right: 30px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(33, 150, 243, 0.9);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            z-index: 1000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            max-width: 300px;
-            font-size: 14px;
-        }
-        
-        .notification.success {
-            background: rgba(76, 175, 80, 0.9);
-        }
-        
-        .notification.error {
-            background: rgba(244, 67, 54, 0.9);
-        }
-        
-        .notification.warning {
-            background: rgba(255, 152, 0, 0.9);
-        }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-    </style>
-</head>
-<body>
-    <div class="bg-animation"></div>
-    <div class="bg-overlay"></div>
+  `;
+}
 
-    <!-- 顶部导航 -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <i class="fas fa-music"></i>
-                <span>云音乐</span>
-            </div>
-            
-            <div class="search-container">
-                <div class="search-wrapper">
-                    <input type="text" class="search-input" placeholder="搜索音乐、歌手、专辑..." id="searchInput">
-                    <select class="source-select" id="sourceSelect">
-                        <option value="netease">网易云音乐</option>
-                        <option value="tencent">QQ音乐</option>
-                        <option value="kuwo">酷我音乐</option>
-                        <option value="joox">JOOX</option>
-                        <option value="kugou">酷狗音乐</option>
-                        <option value="migu">咪咕音乐</option>
-                        <option value="deezer">Deezer</option>
-                        <option value="spotify">Spotify</option>
-                        <option value="apple">Apple Music</option>
-                        <option value="ytmusic">YouTube Music</option>
-                        <option value="tidal">TIDAL</option>
-                        <option value="qobuz">Qobuz</option>
-                        <option value="ximalaya">喜马拉雅</option>
-                    </select>
-                    <button class="search-btn" onclick="searchMusic()">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- 主要内容 -->
-    <div class="main-container">
-        <!-- 搜索结果区域 -->
-        <div class="content-section">
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('search')">
-                    <i class="fas fa-search"></i> 搜索结果
-                </button>
-                <button class="tab-btn" onclick="switchTab('playlist')">
-                    <i class="fas fa-list-music"></i> 网易云歌单
-                </button>
-            </div>
-
-            <div id="searchTab" class="tab-content active">
-                <div class="search-results" id="searchResults">
-                    <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <div>在上方搜索框输入关键词开始搜索音乐</div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="playlistTab" class="tab-content">
-                <div class="playlist-input-container">
-                    <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
-                    <button class="playlist-btn" onclick="parsePlaylist()">
-                        <i class="fas fa-check"></i> 解析歌单
-                    </button>
-                </div>
-                <div class="search-results" id="playlistResults">
-                    <div class="empty-state">
-                        <i class="fas fa-list-ol"></i>
-                        <div>输入歌单ID后点击解析</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 播放器区域 -->
-        <div class="player-section">
-            <div class="current-song">
-                <div class="current-cover-container">
-                    <img class="current-cover" id="currentCover" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjIyMCIgdmlld0JveD0iMCAwIDIyMCAyMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSIyMCIvPgo8cGF0aCBkPSJNMTEwIDcwTDE0MCAx MTBIMTIwVjE1MEg5MFYxMTBINzBMMTEwIDcwWiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=" alt="专辑封面">
-                </div>
-                <div class="current-info">
-                    <h3 id="currentTitle">未选择歌曲</h3>
-                    <p id="currentArtist">请搜索并选择要播放的歌曲</p>
-                </div>
-            </div>
-
-            <div class="player-controls">
-                <button class="control-btn small" onclick="previousSong()">
-                    <i class="fas fa-step-backward"></i>
-                </button>
-                <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()">
-                    <i class="fas fa-play"></i>
-                </button>
-                <button class="control-btn small" onclick="nextSong()">
-                    <i class="fas fa-step-forward"></i>
-                </button>
-            </div>
-
-            <div class="progress-container">
-                <div class="progress-bar" onclick="seekTo(event)">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="time-info">
-                    <span id="currentTime">0:00</span>
-                    <span id="totalTime">0:00</span>
-                </div>
-            </div>
-
-            <!-- 音质选择 -->
-            <div class="quality-container">
-                <div class="quality-label">
-                    <i class="fas fa-music"></i>
-                    <span>音质</span>
-                </div>
-                <select class="quality-select" id="qualitySelect">
-                    <option value="128">标准 128K</option>
-                    <option value="192">较高 192K</option>
-                    <option value="320" selected>高品质 320K</option>
-                    <option value="740">无损 FLAC</option>
-                    <option value="999">Hi-Res</option>
-                </select>
-            </div>
-
-            <div class="volume-container">
-                <i class="fas fa-volume-up volume-icon"></i>
-                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" onchange="setVolume(this.value)">
-            </div>
-
-            <!-- 下载区域 -->
-            <div class="download-container">
-                <button class="download-btn" onclick="downloadCurrentSong()" id="downloadSongBtn" disabled>
-                    <i class="fas fa-download"></i>
-                    <span>下载音乐</span>
-                </button>
-                <button class="download-btn" onclick="downloadCurrentLyric()" id="downloadLyricBtn" disabled>
-                    <i class="fas fa-file-text"></i>
-                    <span>下载歌词</span>
-                </button>
-            </div>
-
-            <audio id="audioPlayer" preload="metadata"></audio>
-        </div>
-
-        <!-- 歌词区域 -->
-        <div class="lyrics-section">
-            <h2 class="section-title">
-                <i class="fas fa-align-left"></i>
-                歌词
-            </h2>
-            <div class="lyrics-container" id="lyricsContainer">
-                <div class="lyric-line">暂无歌词</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 音频可视化波浪 -->
-    <div class="audio-visualizer">
-        <canvas id="waveCanvas"></canvas>
-    </div>
-
-    <script>
-        // 修改API_BASE为相对路径，由Worker处理API请求
+// JavaScript代码函数
+function getJS() {
+  return `
+        // 完全复制原HTML的JavaScript逻辑
         const API_BASE = '/api';
         let currentPlaylist = [];
         let currentIndex = -1;
         let currentLyrics = [];
         let isPlaying = false;
-        let isUserScrolling = false; // 用户是否正在手动滚动歌词
-        let userScrollTimeout; // 用于检测用户停止滚动的计时器
-        let playlistData = []; // 存储当前解析的歌单数据
+        let isUserScrolling = false;
+        let userScrollTimeout;
+        let playlistData = [];
 
         const audioPlayer = document.getElementById('audioPlayer');
         const playBtn = document.getElementById('playBtn');
@@ -1065,12 +1224,10 @@ const HTML_CONTENT = `<!DOCTYPE html>
         const lyricsContainer = document.getElementById('lyricsContainer');
         const currentCover = document.getElementById('currentCover');
         
-        // 音频可视化相关变量
         const canvas = document.getElementById('waveCanvas');
         const canvasCtx = canvas.getContext('2d');
         let animationId;
 
-        // 搜索音乐
         async function searchMusic() {
             const keyword = document.getElementById('searchInput').value.trim();
             const source = document.getElementById('sourceSelect').value;
@@ -1081,52 +1238,51 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
 
             const resultsContainer = document.getElementById('searchResults');
-            resultsContainer.innerHTML = `
+            resultsContainer.innerHTML = \`
                 <div class="loading">
                     <i class="fas fa-spinner"></i>
                     <div>正在搜索音乐...</div>
                 </div>
-            `;
+            \`;
 
             try {
-                const response = await fetch(`${API_BASE}?types=search&source=${source}&name=${encodeURIComponent(keyword)}&count=30`);
+                const response = await fetch(\`\${API_BASE}?types=search&source=\${source}&name=\${encodeURIComponent(keyword)}&count=30\`);
                 const data = await response.json();
 
                 if (data && data.length > 0) {
-                    currentPlaylist = data; // 更新当前播放列表为搜索结果
+                    currentPlaylist = data;
                     displaySearchResults(data, 'searchResults', currentPlaylist);
                 } else {
-                    resultsContainer.innerHTML = `
+                    resultsContainer.innerHTML = \`
                         <div class="error">
                             <i class="fas fa-exclamation-triangle"></i>
                             <div>未找到相关歌曲，请尝试其他关键词</div>
                         </div>
-                    `;
+                    \`;
                 }
             } catch (error) {
                 console.error('搜索失败:', error);
-                resultsContainer.innerHTML = `
+                resultsContainer.innerHTML = \`
                     <div class="error">
                         <i class="fas fa-wifi"></i>
                         <div>网络连接失败，请检查网络后重试</div>
                     </div>
-                `;
+                \`;
             }
         }
 
-
-        // 获取专辑图片URL
         async function getAlbumCoverUrl(song, size = 300) {
             if (!song.pic_id) {
                 return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTUiIGhlaWdodD0iNTUiIHZpZXdCb3g9IjAgMCA1NSA1NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjU1IiBoZWlnaHQ9IjU1IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSI4Ii8+CjxwYXRoIGQ9Ik0yNy41IDE4TDM1IDI3LjVIMzBWMzdIMjVWMjcuNUgyMEwyNy41IDE4WiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=';
             }
 
             try {
-                const response = await fetch(`${API_BASE}?types=pic&source=${song.source}&id=${song.pic_id}&size=${size}`);
+                const response = await fetch(\`\${API_BASE}?types=pic&source=\${song.source}&id=\${song.pic_id}&size=\${size}\`);
                 const data = await response.json();
                 
                 if (data && data.url) {
-                    return data.url;
+                    // 使用图片代理
+                    return \`/image-proxy?url=\${encodeURIComponent(data.url)}\`;
                 }
             } catch (error) {
                 console.error('获取专辑图失败:', error);
@@ -1135,7 +1291,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTUiIGhlaWdodD0iNTUiIHZpZXdCb3g9IjAgMCA1NSA1NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjU1IiBoZWlnaHQ9IjU1IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSI4Ii8+CjxwYXRoIGQ9Ik0yNy41IDE4TDM1IDI3LjVIMzBWMzdIMjVWMjcuNUgyMEwyNy41IDE4WiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=';
         }
 
-        // 显示搜索结果
         async function displaySearchResults(songs, containerId, playlistForPlayback) {
             const resultsContainer = document.getElementById(containerId);
             resultsContainer.innerHTML = '';
@@ -1146,28 +1301,27 @@ const HTML_CONTENT = `<!DOCTYPE html>
                 songItem.className = 'song-item';
                 songItem.onclick = () => playSong(index, playlistForPlayback);
 
-                songItem.innerHTML = `
-                    <div class="song-index">${(index + 1).toString().padStart(2, '0')}</div>
+                songItem.innerHTML = \`
+                    <div class="song-index">\${(index + 1).toString().padStart(2, '0')}</div>
                     <div class="song-info">
-                        <div class="song-name">${song.name}</div>
-                        <div class="song-artist">${Array.isArray(song.artist) ? song.artist.join(' / ') : song.artist} · ${song.album}</div>
+                        <div class="song-name">\${song.name}</div>
+                        <div class="song-artist">\${Array.isArray(song.artist) ? song.artist.join(' / ') : song.artist} · \${song.album}</div>
                     </div>
                     <div class="song-actions">
-                        <button class="action-btn" onclick="downloadSong(${index})" title="下载音乐">
+                        <button class="action-btn" onclick="downloadSong(\${index})" title="下载音乐">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="action-btn" onclick="downloadLyric(${index})" title="下载歌词">
+                        <button class="action-btn" onclick="downloadLyric(\${index})" title="下载歌词">
                             <i class="fas fa-file-text"></i>
                         </button>
                     </div>
                     <div class="song-duration">--:--</div>
-                `;
+                \`;
 
                 resultsContainer.appendChild(songItem);
             }
         }
 
-        // 播放歌曲
         async function playSong(index, playlist) {
             if (!playlist || index < 0 || index >= playlist.length) return;
             
@@ -1175,32 +1329,27 @@ const HTML_CONTENT = `<!DOCTYPE html>
             currentIndex = index;
             const song = currentPlaylist[index];
 
-            // 更新UI
             await updateCurrentSongInfo(song);
             updateActiveItem();
 
             try {
                 showNotification('正在加载音乐...', 'info');
                 
-                // 获取当前选择的音质
                 const quality = document.getElementById('qualitySelect').value;
-                
-                // 获取音乐URL
-                const urlResponse = await fetch(`${API_BASE}?types=url&source=${song.source}&id=${song.id}&br=${quality}`);
+                const urlResponse = await fetch(\`\${API_BASE}?types=url&source=\${song.source}&id=\${song.id}&br=\${quality}\`);
                 const urlData = await urlResponse.json();
 
                 if (urlData && urlData.url) {
-                    audioPlayer.src = urlData.url;
+                    // 使用音频代理
+                    const proxyUrl = \`/audio-proxy?url=\${encodeURIComponent(urlData.url)}\`;
+                    audioPlayer.src = proxyUrl;
                     audioPlayer.load();
                     
-                    // 获取歌词
                     loadLyrics(song);
                     
-                    // 启用下载按钮
                     document.getElementById('downloadSongBtn').disabled = false;
                     document.getElementById('downloadLyricBtn').disabled = false;
                     
-                    // 自动播放
                     const playPromise = audioPlayer.play();
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
@@ -1208,18 +1357,23 @@ const HTML_CONTENT = `<!DOCTYPE html>
                             updatePlayButton();
                             currentCover.classList.add('playing');
                             
-                            // 开始可视化
                             try {
                                 startVisualization();
                             } catch (e) {
                                 console.error('启动音频可视化失败:', e);
-                                // 即使可视化失败，也要确保音乐能正常播放
                             }
                             
-                            showNotification(`开始播放 (${getQualityText(urlData.br || quality)})`, 'success');
+                            showNotification(\`开始播放 (\${getQualityText(urlData.br || quality)})\`, 'success');
                     }).catch(error => {
                         console.error('播放失败:', error);
+                            // 如果代理失败，尝试直接访问
+                            console.log('尝试直接访问音频URL...');
+                            audioPlayer.src = urlData.url;
+                            audioPlayer.load();
+                            audioPlayer.play().catch(directError => {
+                                console.error('直接访问也失败:', directError);
                         showNotification('播放失败，请尝试其他歌曲', 'error');
+                            });
                     });
                     }
                 } else {
@@ -1231,7 +1385,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 获取音质文本
         function getQualityText(br) {
             const qualityMap = {
                 '128': '标准音质',
@@ -1240,10 +1393,9 @@ const HTML_CONTENT = `<!DOCTYPE html>
                 '740': '无损音质',
                 '999': 'Hi-Res音质'
             };
-            return qualityMap[br] || `${br}K`;
+            return qualityMap[br] || \`\${br}K\`;
         }
 
-        // 下载当前播放的歌曲
         async function downloadCurrentSong() {
             if (currentIndex === -1) {
                 showNotification('请先选择要下载的歌曲', 'warning');
@@ -1254,7 +1406,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             await downloadSong(currentIndex);
         }
 
-        // 下载当前播放的歌词
         async function downloadCurrentLyric() {
             if (currentIndex === -1) {
                 showNotification('请先选择要下载歌词的歌曲', 'warning');
@@ -1264,7 +1415,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             await downloadLyric(currentIndex);
         }
 
-        // 下载歌曲
         async function downloadSong(index) {
             const song = currentPlaylist[index];
             const quality = document.getElementById('qualitySelect').value;
@@ -1272,17 +1422,15 @@ const HTML_CONTENT = `<!DOCTYPE html>
             try {
                 showNotification('正在获取下载链接...', 'info');
                 
-                const response = await fetch(`${API_BASE}?types=url&source=${song.source}&id=${song.id}&br=${quality}`);
+                const response = await fetch(\`\${API_BASE}?types=url&source=\${song.source}&id=\${song.id}&br=\${quality}\`);
                 const data = await response.json();
                 
                 if (data && data.url) {
-                    // 创建下载链接
                     const link = document.createElement('a');
                     link.href = data.url;
-                    link.download = `${song.name} - ${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}.mp3`;
+                    link.download = \`\${song.name} - \${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}.mp3\`;
                     link.target = '_blank';
                     
-                    // 触发下载
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -1297,27 +1445,20 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 下载歌词
         async function downloadLyric(index) {
             const song = currentPlaylist[index];
             
             try {
                 showNotification('正在获取歌词...', 'info');
                 
-                const response = await fetch(`${API_BASE}?types=lyric&source=${song.source}&id=${song.lyric_id || song.id}`);
+                const response = await fetch(\`\${API_BASE}?types=lyric&source=\${song.source}&id=\${song.lyric_id || song.id}\`);
                 const data = await response.json();
                 
                 if (data && data.lyric) {
-                    // 创建歌词文件内容
-                    let lyricContent = `歌曲：${song.name}
-`;
-                    lyricContent += `歌手：${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}
-`;
-                    lyricContent += `专辑：${song.album}
-`;
-                    lyricContent += `来源：${song.source}
-
-`;
+                    let lyricContent = \`歌曲：\${song.name}\\n\`;
+                    lyricContent += \`歌手：\${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}\\n\`;
+                    lyricContent += \`专辑：\${song.album}\\n\`;
+                    lyricContent += \`来源：\${song.source}\\n\\n\`;
                     lyricContent += data.lyric;
                     
                     if (data.tlyric) {
@@ -1325,13 +1466,12 @@ const HTML_CONTENT = `<!DOCTYPE html>
                         lyricContent += data.tlyric;
                     }
                     
-                    // 创建Blob并下载
                     const blob = new Blob([lyricContent], { type: 'text/plain;charset=utf-8' });
                     const url = URL.createObjectURL(blob);
                     
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `${song.name} - ${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}.lrc`;
+                    link.download = \`\${song.name} - \${Array.isArray(song.artist) ? song.artist.join(', ') : song.artist}.lrc\`;
                     
                     document.body.appendChild(link);
                     link.click();
@@ -1348,14 +1488,12 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 音质改变时重新加载当前歌曲
         document.getElementById('qualitySelect').addEventListener('change', () => {
             if (currentIndex !== -1 && audioPlayer.src) {
                 const currentTime = audioPlayer.currentTime;
                 const wasPlaying = isPlaying;
                 
-                playSong(currentIndex).then(() => {
-                    // 恢复播放位置
+                playSong(currentIndex, currentPlaylist).then(() => {
                     audioPlayer.currentTime = currentTime;
                     if (!wasPlaying) {
                         audioPlayer.pause();
@@ -1364,25 +1502,20 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         });
 
-        // 更新当前歌曲信息
         async function updateCurrentSongInfo(song) {
             document.getElementById('currentTitle').textContent = song.name;
             document.getElementById('currentArtist').textContent = 
-                `${Array.isArray(song.artist) ? song.artist.join(' / ') : song.artist} · ${song.album}`;
+                \`\${Array.isArray(song.artist) ? song.artist.join(' / ') : song.artist} · \${song.album}\`;
 
-            // 获取专辑图片URL
             const coverUrl = await getAlbumCoverUrl(song, 500);
             currentCover.src = coverUrl;
         }
 
-        // 更新活跃项目
         function updateActiveItem() {
-            // 先移除所有活跃状态
             document.querySelectorAll('.song-item').forEach(item => {
                 item.classList.remove('active');
             });
 
-            // 只给当前播放列表中的活跃歌曲添加状态
             const activeListItems = document.querySelectorAll(
                 (currentPlaylist === playlistData ? '#playlistResults' : '#searchResults') + ' .song-item'
             );
@@ -1391,7 +1524,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 更新播放按钮
         function updatePlayButton() {
             const icon = playBtn.querySelector('i');
             if (isPlaying) {
@@ -1401,10 +1533,9 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 加载歌词
         async function loadLyrics(song) {
             try {
-                const response = await fetch(`${API_BASE}?types=lyric&source=${song.source}&id=${song.lyric_id || song.id}`);
+                const response = await fetch(\`\${API_BASE}?types=lyric&source=\${song.source}&id=\${song.lyric_id || song.id}\`);
                 const data = await response.json();
 
                 if (data && data.lyric) {
@@ -1420,13 +1551,12 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 解析LRC歌词
         function parseLyrics(lrcText) {
-            const lines = lrcText.split('\n');
+            const lines = lrcText.split('\\n');
             currentLyrics = [];
 
             lines.forEach(line => {
-                const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+                const match = line.match(/\\[(\\d{2}):(\\d{2})\\.(\\d{2,3})\\](.*)/);
                 if (match) {
                     const minutes = parseInt(match[1]);
                     const seconds = parseInt(match[2]);
@@ -1444,7 +1574,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             displayLyrics();
         }
 
-        // 显示歌词
         function displayLyrics() {
             lyricsContainer.innerHTML = '';
             if (currentLyrics.length === 0) {
@@ -1463,7 +1592,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             });
         }
 
-        // 更新歌词高亮
         function updateLyricHighlight() {
             const currentTime = audioPlayer.currentTime;
             let activeIndex = -1;
@@ -1481,7 +1609,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
                 line.classList.toggle('active', index === activeIndex);
             });
 
-            // 改进的自动滚动逻辑
             if (activeIndex >= 0 && activeIndex < lyricLines.length && !isUserScrolling) {
                 const activeLine = lyricLines[activeIndex];
                 const container = document.getElementById('lyricsContainer');
@@ -1491,7 +1618,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
                     const lineHeight = activeLine.offsetHeight;
                     const lineOffsetTop = activeLine.offsetTop;
                     
-                    // 计算理想的滚动位置（将当前歌词放在容器中间）
                     const idealScrollTop = lineOffsetTop - (containerHeight / 2) + (lineHeight / 2);
                     
                     container.scrollTo({
@@ -1502,7 +1628,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 播放控制
         function togglePlay() {
             if (audioPlayer.src) {
                 if (isPlaying) {
@@ -1531,7 +1656,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 进度控制
         function seekTo(event) {
             if (audioPlayer.duration) {
                 const rect = event.target.getBoundingClientRect();
@@ -1540,54 +1664,69 @@ const HTML_CONTENT = `<!DOCTYPE html>
             }
         }
 
-        // 音量设置
         function setVolume(value) {
             audioPlayer.volume = value / 100;
+            
+            const volumeIcon = document.querySelector('.volume-icon');
+            if (value == 0) {
+                volumeIcon.className = 'fas fa-volume-mute volume-icon';
+            } else if (value < 50) {
+                volumeIcon.className = 'fas fa-volume-down volume-icon';
+            } else {
+                volumeIcon.className = 'fas fa-volume-up volume-icon';
+            }
         }
 
-        // 格式化时间
         function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = Math.floor(seconds % 60);
-            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
         }
 
-        // 显示通知
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                                  type === 'error' ? 'exclamation-circle' : 
-                                  type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                <span>${message}</span>
-            `;
+            notification.style.cssText = \`
+                position: fixed;
+                top: 100px;
+                right: 30px;
+                background: \${type === 'success' ? 'rgba(76, 175, 80, 0.9)' : 
+                           type === 'error' ? 'rgba(244, 67, 54, 0.9)' : 
+                           type === 'warning' ? 'rgba(255, 152, 0, 0.9)' : 
+                           'rgba(33, 150, 243, 0.9)'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                z-index: 1000;
+                transform: translateX(400px);
+                transition: transform 0.3s ease;
+                max-width: 300px;
+                font-size: 14px;
+            \`;
+            notification.textContent = message;
             
             document.body.appendChild(notification);
             
-            // 添加显示动画
             setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
+                notification.style.transform = 'translateX(0)';
+            }, 100);
             
-            // 自动移除
             setTimeout(() => {
-                notification.classList.remove('show');
+                notification.style.transform = 'translateX(400px)';
                 setTimeout(() => {
                     document.body.removeChild(notification);
                 }, 300);
             }, 3000);
         }
 
-        // 音频播放器事件监听
         audioPlayer.addEventListener('timeupdate', () => {
-            // 更新进度条
-            const percent = (audioPlayer.currentTime / audioPlayer.duration) * 100 || 0;
-            progressFill.style.width = `${percent}%`;
+            if (audioPlayer.duration) {
+                const percent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            progressFill.style.width = percent + '%';
             currentTimeSpan.textContent = formatTime(audioPlayer.currentTime);
-            
-            // 更新歌词高亮
             updateLyricHighlight();
+            }
         });
 
         audioPlayer.addEventListener('loadedmetadata', () => {
@@ -1595,238 +1734,248 @@ const HTML_CONTENT = `<!DOCTYPE html>
         });
 
         audioPlayer.addEventListener('ended', () => {
-            // 自动播放下一首
-            if (currentIndex < currentPlaylist.length - 1) {
                 nextSong();
-            } else {
-                isPlaying = false;
-                updatePlayButton();
-                currentCover.classList.remove('playing');
-                stopVisualization();
-            }
         });
 
         audioPlayer.addEventListener('play', () => {
             isPlaying = true;
             updatePlayButton();
             currentCover.classList.add('playing');
+            
+            try {
             startVisualization();
+            } catch (e) {
+                console.error('启动音频可视化失败:', e);
+            }
         });
 
         audioPlayer.addEventListener('pause', () => {
             isPlaying = false;
             updatePlayButton();
             currentCover.classList.remove('playing');
+            
+            try {
             stopVisualization();
+            } catch (e) {
+                console.error('停止音频可视化失败:', e);
+            }
         });
 
-        // 键盘快捷键
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
-                event.preventDefault();
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
                 togglePlay();
-            } else if (event.code === 'ArrowLeft' && document.activeElement.tagName !== 'INPUT') {
+            } else if (e.code === 'ArrowLeft' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
                 previousSong();
-            } else if (event.code === 'ArrowRight' && document.activeElement.tagName !== 'INPUT') {
+            } else if (e.code === 'ArrowRight' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
                 nextSong();
             }
         });
 
-        // 搜索框回车事件
-        document.getElementById('searchInput').addEventListener('keydown', (event) => {
-            if (event.code === 'Enter') {
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
                 searchMusic();
             }
         });
 
-        // 歌词容器滚动事件
         lyricsContainer.addEventListener('scroll', () => {
             isUserScrolling = true;
             clearTimeout(userScrollTimeout);
             userScrollTimeout = setTimeout(() => {
                 isUserScrolling = false;
-            }, 3000); // 3秒后恢复自动滚动
+            }, 2000);
         });
 
-        // 音频可视化
         function initAudioVisualizer() {
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
         }
 
         function resizeCanvas() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = 100;
         }
 
         function connectAudioSource() {
-            if (!window.AudioContext) {
-                console.warn('浏览器不支持 Web Audio API');
-                return false;
-            }
-
+            return;
+        }
+        
+        function drawWave() {
             try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-
-                const source = audioContext.createMediaElementSource(audioPlayer);
-                source.connect(analyser);
-                analyser.connect(audioContext.destination);
-
-                function drawWave() {
-                    if (!isPlaying) return;
-
-                    animationId = requestAnimationFrame(drawWave);
-                    analyser.getByteFrequencyData(dataArray);
-
-                    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-                    canvasCtx.fillStyle = 'rgba(0, 0, 0, 0)';
-                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    const barWidth = (canvas.width / bufferLength) * 2.5;
-                    let x = 0;
-
-                    for (let i = 0; i < bufferLength; i++) {
-                        const barHeight = dataArray[i] / 2;
-
-                        const gradient = canvasCtx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
-                        gradient.addColorStop(0, '#ff6b6b');
-                        gradient.addColorStop(1, '#ff8a80');
-
-                        canvasCtx.fillStyle = gradient;
-                        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-
-                        x += barWidth + 1;
+                animationId = requestAnimationFrame(drawWave);
+                
+                canvasCtx.fillStyle = 'rgba(12, 12, 12, 0.2)';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
+                gradient.addColorStop(0, '#ff6b6b');
+                gradient.addColorStop(0.5, '#ff8a80');
+                gradient.addColorStop(1, '#ff6b6b');
+                
+                canvasCtx.lineWidth = 3;
+                canvasCtx.strokeStyle = gradient;
+                canvasCtx.beginPath();
+                
+                const time = Date.now() * 0.002;
+                const amplitude = isPlaying ? 30 + Math.random() * 20 : 5;
+                const frequency = 0.02;
+                const points = 100;
+                
+                for (let i = 0; i <= points; i++) {
+                    const x = (i / points) * canvas.width;
+                    const noise = isPlaying ? Math.random() * 10 : 0;
+                    const y = canvas.height / 2 + Math.sin(i * frequency + time) * amplitude + noise;
+                    
+                    if (i === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
                     }
                 }
-
-                return { drawWave };
-            } catch (error) {
-                console.error('音频可视化初始化失败:', error);
-                return false;
+                
+                canvasCtx.stroke();
+                
+                canvasCtx.beginPath();
+                canvasCtx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+                
+                for (let i = 0; i <= points; i++) {
+                    const x = (i / points) * canvas.width;
+                    const noise = isPlaying ? Math.random() * 10 : 0;
+                    const y = canvas.height / 2 - Math.sin(i * frequency + time) * amplitude - noise;
+                    
+                    if (i === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                
+                canvasCtx.stroke();
+            } catch (e) {
+                console.error('绘制波浪失败:', e);
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
             }
         }
 
-        let visualizer = null;
-
         function startVisualization() {
-            if (!visualizer) {
-                visualizer = connectAudioSource();
+            try {
+                if (!animationId) {
+                    drawWave();
             }
-
-            if (visualizer && visualizer.drawWave) {
-                visualizer.drawWave();
+            } catch (e) {
+                console.error('启动可视化失败:', e);
             }
         }
 
         function stopVisualization() {
+            try {
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
+                }
+                
+                if (canvasCtx) {
+                    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            } catch (e) {
+                console.error('停止可视化失败:', e);
             }
         }
 
-        // 页面加载后初始化
-        window.addEventListener('DOMContentLoaded', () => {
-            initAudioVisualizer();
-            setVolume(document.getElementById('volumeSlider').value);
-            
-            // 欢迎信息
-            setTimeout(() => {
-                showNotification('欢迎使用云音乐播放器', 'info');
-            }, 1000);
-        });
-
-        // 标签页切换
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabId));
-            });
-
+        function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.toggle('active', content.id === tabId + 'Tab');
+                content.classList.remove('active');
             });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.currentTarget.classList.add('active');
         }
 
-        // 解析网易云歌单
         async function parsePlaylist() {
             const playlistId = document.getElementById('playlistIdInput').value.trim();
-            
             if (!playlistId) {
                 showNotification('请输入歌单ID', 'warning');
                 return;
             }
 
             const resultsContainer = document.getElementById('playlistResults');
-            resultsContainer.innerHTML = `
+            resultsContainer.innerHTML = \`
                 <div class="loading">
                     <i class="fas fa-spinner"></i>
                     <div>正在解析歌单...</div>
                 </div>
-            `;
+            \`;
 
             try {
-                const response = await fetch(`${API_BASE}?types=playlist&source=netease&id=${playlistId}`);
+                const response = await fetch(\`\${API_BASE}?types=playlist&id=\${playlistId}&source=netease\`);
                 const data = await response.json();
 
-                if (data && data.songs && data.songs.length > 0) {
-                    playlistData = data.songs; // 存储歌单数据
-                    displaySearchResults(data.songs, 'playlistResults', playlistData);
-                    
-                    showNotification(`成功解析歌单: ${data.name || '未知歌单'} (${data.songs.length}首歌曲)`, 'success');
+                let songs = [];
+                if (data && data.playlist && data.playlist.tracks) {
+                    songs = data.playlist.tracks.map(track => ({
+                        name: track.name,
+                        artist: track.ar.map(a => a.name).join(' / '),
+                        album: track.al.name,
+                        id: track.id,
+                        pic_id: track.al.pic_id_str || track.al.pic_str || track.al.pic,
+                        lyric_id: track.id,
+                        source: 'netease'
+                    }));
+                } else if (data && data.tracks) {
+                     songs = data.tracks.map(track => ({
+                        name: track.name,
+                        artist: track.ar.map(a => a.name).join(' / '),
+                        album: track.al.name,
+                        id: track.id,
+                        pic_id: track.al.pic_id_str || track.al.pic_str || track.al.pic,
+                        lyric_id: track.id,
+                        source: 'netease'
+                    }));
+                }
+
+                if (songs.length > 0) {
+                    playlistData = songs;
+                    displaySearchResults(songs, 'playlistResults', playlistData);
+                    showNotification(\`成功加载 \${songs.length} 首歌曲\`, 'success');
                 } else {
-                    resultsContainer.innerHTML = `
+                    resultsContainer.innerHTML = \`
                         <div class="error">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <div>未找到歌单或歌单为空</div>
+                            <div>解析歌单失败，请检查ID是否正确或API是否正常</div>
                         </div>
-                    `;
+                    \`;
                 }
             } catch (error) {
                 console.error('解析歌单失败:', error);
-                resultsContainer.innerHTML = `
+                resultsContainer.innerHTML = \`
                     <div class="error">
                         <i class="fas fa-wifi"></i>
                         <div>网络连接失败，请检查网络后重试</div>
                     </div>
-                `;
+                \`;
             }
         }
-    </script>
-`;
 
-// Cloudflare Worker 处理请求的主函数
-async function handleRequest(request) {
-  const url = new URL(request.url);
-  
-  // 如果是API请求，则转发到原始API
-  if (url.pathname === '/api') {
-    const apiUrl = new URL('https://music-api.gdstudio.xyz/api.php');
-    
-    // 将所有查询参数添加到API URL
-    for (const [key, value] of url.searchParams.entries()) {
-      apiUrl.searchParams.append(key, value);
-    }
-    
-    // 转发请求到原始API
-    return fetch(apiUrl.toString(), {
-      headers: request.headers,
-      method: request.method,
-    });
-  }
-  
-  // 否则返回HTML内容
-  return new Response(HTML_CONTENT, {
-    headers: {
-      'Content-Type': 'text/html;charset=UTF-8',
-    },
-  });
+        setVolume(80);
+        initAudioVisualizer();
+        
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                showNotification('欢迎使用云音乐播放器！', 'success');
+            }, 1000);
+        });
+  `;
 }
 
-// 注册Cloudflare Worker的fetch事件处理程序
+// 监听请求
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
