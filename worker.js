@@ -1451,8 +1451,8 @@ function getCSS() {
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 100px;
-            z-index: 10;
+            height: 180px;
+            z-index: -1;
             pointer-events: none;
             background: linear-gradient(to top, rgba(12, 12, 12, 0.8), transparent);
             backdrop-filter: blur(5px);
