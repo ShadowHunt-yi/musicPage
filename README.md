@@ -1,34 +1,39 @@
-# 🎵 云音乐播放器 - Vue.js SPA版本
+# 🎵 云音乐播放器 - Cloudflare Worker版
 
-基于 **Vue.js 3** 和 **Cloudflare Worker** 构建的现代化单页面音乐播放器应用，支持多平台音乐搜索和在线播放。
+基于 **Cloudflare Worker** 构建的现代化在线音乐播放器，集成了完整的前端应用代码，支持多平台音乐搜索和在线播放。
 
-[![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?style=flat-square&logo=vue.js)](https://vuejs.org/)
+> **⚠️ 重要提醒**: 本项目仅用于技术学习和交流，请勿用于商业用途。所有音乐内容版权归原作者所有，使用前请确保符合当地法律法规。
+
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](https://www.javascript.com/)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)](https://www.w3schools.com/css/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 ## ✨ 功能特点
 
 ### 🎶 音乐功能
-- **多平台搜索** - 支持网易云音乐、QQ音乐、酷我音乐、酷狗音乐、咪咕音乐等
+- **多平台搜索** - 支持小云音乐、小秋音乐、小我音乐、小狗音乐、小咕音乐等
 - **在线播放** - 高质量音乐播放，支持多种音质选择
 - **播放控制** - 播放/暂停、上一首/下一首、进度控制
 - **歌词显示** - 实时歌词同步高亮显示
 - **专辑封面** - 动态获取和显示专辑封面
 
 ### 🚀 技术特性
-- **Vue.js 3** - 使用最新的 Composition API 构建
-- **SPA架构** - 单页面应用，流畅的用户体验
-- **组件化设计** - 模块化组件，便于维护和扩展
-- **状态管理** - 使用 Pinia 进行全局状态管理
+- **Cloudflare Worker** - 边缘计算，全球部署
+- **单文件架构** - 所有代码集成在一个Worker文件中
+- **原生JavaScript** - 无框架依赖，纯原生代码实现
 - **响应式设计** - 完美适配桌面端和移动端
-- **现代化UI** - 美观的界面设计和流畅的动画效果
+- **现代化UI** - 渐变背景和流畅的动画效果
+- **音频可视化** - 实时音频波形显示
 
 ### 🛠️ 工程化特性
 - **边缘计算** - 基于 Cloudflare Worker 部署
 - **零配置部署** - 无需服务器，一键部署
-- **CDN加速** - 全球CDN加速访问
-- **CORS处理** - 自动处理跨域请求
-- **缓存优化** - 智能资源缓存策略
+- **全球CDN** - Cloudflare全球网络加速
+- **API代理** - 内置音频/图片代理，解决跨域问题
+- **智能缓存** - 自动资源缓存优化
+- **移动端优化** - 支持触摸操作和移动端分页
 
 ## 🚀 快速开始
 
@@ -89,62 +94,82 @@ wrangler dev
 修改 `worker.js` 文件，保存后自动重新加载
 
 ### 开发技巧
-- 使用浏览器开发者工具调试Vue应用
-- 查看Network面板监控API请求
-- 使用Vue DevTools扩展调试组件状态
+- 使用浏览器开发者工具调试JavaScript应用
+- 查看Network面板监控API请求和资源加载
+- 使用Console面板查看日志和错误信息
+- 在Cloudflare Dashboard中查看Worker日志
 
 ## 📁 项目结构
 
 ```
 musicPage/
-├── worker.js          # 🎯 主要文件：包含完整的Vue.js SPA应用
-│   ├── 应用配置        # APP_CONFIG - 应用基本配置
-│   ├── HTML模板        # BASE_HTML - 基础HTML结构
-│   ├── CSS样式         # APP_STYLES - 完整的样式定义
-│   ├── Vue.js应用      # VUE_APP - Vue应用代码
-│   │   ├── Pinia状态管理    # 全局状态管理
-│   │   ├── 音乐API服务      # 音乐搜索、播放等API
-│   │   ├── 通知服务         # 用户交互反馈
-│   │   ├── Vue组件          # HomePage、Player、Lyrics等
-│   │   └── 路由配置         # Vue Router配置
-│   └── Worker处理函数   # Cloudflare Worker请求处理
-├── wrangler.toml      # 📝 Wrangler配置文件
-├── index.html         # 📄 原始HTML文件（参考用）
-└── README.md          # 📖 项目文档
+├── worker.js              # 🎯 核心文件：完整的Web应用
+│   ├── 应用配置            # APP_CONFIG - 应用基本配置
+│   ├── HTML模板            # BASE_HTML - 完整的HTML结构
+│   ├── CSS样式             # getCSS() - 完整的样式定义
+│   ├── JavaScript应用      # getJS() - 原生JavaScript应用逻辑
+│   │   ├── 音乐搜索功能     # 多平台音乐搜索
+│   │   ├── 播放器控制       # 音乐播放、暂停、切换
+│   │   ├── 歌词同步显示     # 实时歌词高亮
+│   │   ├── 专辑图片获取     # 动态专辑封面
+│   │   ├── 下载功能         # 音乐和歌词下载
+│   │   ├── 移动端适配       # 触摸操作和分页
+│   │   └── 音频可视化       # Canvas波形显示
+│   └── Worker处理函数       # Cloudflare Worker请求处理
+├── wrangler.toml          # 📝 Wrangler配置文件
+├── index.html             # 📄 原版HTML文件（参考）
+└── README.md              # 📖 项目文档
 ```
 
 ## 🏗️ 技术架构
 
 ### 前端架构
 ```
-Vue.js 3 (Composition API)
-├── Vue Router 4        # 客户端路由
-├── Pinia              # 状态管理
-├── 组件系统
-│   ├── HomePage       # 主页和搜索
-│   ├── PlayerComponent # 音乐播放器
-│   ├── LyricsComponent # 歌词显示
-│   └── NotificationComponent # 通知系统
-└── 服务层
-    ├── useMusicAPI    # 音乐API服务
-    └── useNotification # 通知服务
+原生HTML/CSS/JavaScript
+├── 响应式布局          # CSS Grid + Flexbox
+├── 移动端适配          # 触摸事件 + 分页导航  
+├── 音乐播放器          # HTML5 Audio API
+├── 歌词同步显示        # 实时解析LRC格式
+├── 专辑图片展示        # 动态加载和缓存
+├── 音频可视化          # Canvas 2D渲染
+└── 用户交互
+    ├── 搜索功能         # 多平台音乐搜索
+    ├── 播放控制         # 播放/暂停/切换
+    ├── 进度控制         # 拖拽定位播放
+    ├── 音量调节         # 实时音量控制
+    └── 下载功能         # 音乐/歌词下载
 ```
 
 ### 后端架构
 ```
 Cloudflare Worker
-├── 静态资源服务        # CSS、JS文件服务
+├── 静态资源服务        # HTML/CSS/JS内联服务
 ├── API代理服务         # 音乐API请求代理
+├── 音频代理           # 音频流代理服务
+├── 图片代理           # 专辑封面代理服务
 ├── CORS处理           # 跨域请求处理
-└── SPA路由支持        # 单页面应用路由
+└── 缓存优化           # 智能资源缓存
 ```
 
-## ⚠️ 注意事项
+## ⚠️ 重要声明
 
-- **API依赖**: 项目使用 `https://music-api.gdstudio.xyz/api.php` 提供音乐数据
-- **浏览器兼容**: 需要支持ES6+和Web Audio API的现代浏览器  
-- **网络环境**: 需要能够访问音乐API和CDN资源
-- **CORS处理**: Worker自动处理跨域问题，无需额外配置
+### 版权说明
+- **仅供学习**: 本项目仅用于技术学习和交流，请勿用于商业用途
+- **音乐版权**: 所有音乐内容版权归原作者所有，本项目不存储任何音乐文件
+- **API使用**: 项目使用第三方API `music-api.gdstudio.xyz` 获取音乐数据，请遵守相关服务条款
+- **合规使用**: 用户应自行确保使用行为符合当地法律法规
+
+### 免责声明
+- 本项目不对音乐内容的版权承担任何责任
+- 使用者应自行承担使用本项目可能产生的风险
+- 如有版权争议，请联系相关版权方处理
+- 本项目作者不对因使用本项目而产生的任何损失负责
+
+### 技术要求
+- **浏览器兼容**: 需要支持ES6+和HTML5 Audio API的现代浏览器  
+- **网络环境**: 需要能够访问音乐API和音频资源
+- **Worker限制**: 遵循Cloudflare Worker的CPU时间和内存限制
+- **移动端**: 支持触摸操作，自动适配移动设备
 
 ## 🤝 贡献指南
 
@@ -162,7 +187,7 @@ Cloudflare Worker
 
 ## 🙏 致谢
 
-- [Vue.js](https://vuejs.org/) - 渐进式JavaScript框架
+- **原版HTML代码** - 感谢 [Linux.do 论坛](https://linux.do/t/topic/925463) 提供的原版HTML音乐播放器代码
 - [Cloudflare Workers](https://workers.cloudflare.com/) - 边缘计算平台
 - [Font Awesome](https://fontawesome.com/) - 图标库
-- 音乐API提供方
+- [音乐API提供方](https://music-api.gdstudio.xyz/api.php) - 音乐数据接口
