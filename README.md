@@ -6,6 +6,14 @@
 
 ## 📋 版本更新日志
 
+### v2.1.1 (2025-9-10) - 独立HTML版本发布
+#### 🎯 新增功能
+- **独立HTML版本** - 新增 `music.html` 独立文件，包含完整的音乐播放器功能
+- **自包含设计** - HTML文件内联所有CSS和JavaScript，无需外部依赖
+- **直接使用** - 可直接在浏览器中打开使用，无需部署Worker
+- **API直连** - 直接连接音乐API，无需代理服务
+- **完整功能** - 包含所有Worker版本的功能特性
+
 ### v2.1.0 (2025-9-10) - 移动端体验大幅提升
 #### 🎯 重大修复
 - **修复桌面端搜索不显示问题** - 解决了重复ID导致的搜索结果不显示bug
@@ -81,6 +89,18 @@
 
 ## 🚀 快速开始
 
+### 🎯 两种使用方式
+
+#### 方式一：独立HTML版本（推荐新手）
+1. **下载文件**
+   - 直接下载 `music.html` 文件
+   
+2. **直接使用**
+   - 在浏览器中打开 `music.html` 文件
+   - 无需任何配置，即可开始使用
+
+#### 方式二：Cloudflare Worker版本
+
 ### 📋 前提条件
 
 - 安装 [Node.js](https://nodejs.org/) (版本 16 或更高)
@@ -120,7 +140,7 @@ wrangler publish
 部署成功后，访问 `https://your-music-player.<your-subdomain>.workers.dev`
 
 ### 🎉 完成！
-你的Vue.js音乐播放器现在已经在全球CDN上运行了！
+你的音乐播放器现在已经在全球CDN上运行了！
 
 ## 💻 本地开发
 
@@ -250,4 +270,4 @@ Cloudflare Worker
 - **原版HTML代码** - 感谢 [Linux.do 论坛](https://linux.do/t/topic/925463) 提供的原版HTML音乐播放器代码
 - [Cloudflare Workers](https://workers.cloudflare.com/) - 边缘计算平台
 - [Font Awesome](https://fontawesome.com/) - 图标库
-- [音乐API提供方](https://music-api.gdstudio.xyz/api.php) - 音乐数据接口
+- [音乐API提供方](https://music-api.gdstudio.xyz/api.php) - GD音乐台(music.gdstudio.xyz)音乐数据接口
