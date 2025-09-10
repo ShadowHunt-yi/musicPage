@@ -56,209 +56,75 @@ const BASE_HTML = `<!DOCTYPE html>
 
     <!-- 主要内容 -->
     <div class="main-container">
-        <!-- 移动端分页指示器 -->
-        <div class="mobile-page-indicators" id="mobilePageIndicators">
-            <div class="page-indicator active"></div>
-            <div class="page-indicator"></div>
-            <div class="page-indicator"></div>
-        </div>
+        <!-- 搜索结果区域 -->
+        <div class="content-section">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('search')">
+                    <i class="fas fa-search"></i> 搜索结果
+                </button>
+                <button class="tab-btn" onclick="switchTab('playlist')">
+                    <i class="fas fa-list-music"></i> 网易云歌单
+                </button>
+            </div>
 
-        <!-- 移动端页面容器 -->
-        <div class="mobile-pages-container" id="mobilePagesContainer">
-            <!-- 第一页：搜索结果 -->
-            <div class="mobile-page active" id="mobilePage0">
-                <div class="content-section mobile-search-page">
-                    <div class="tabs">
-                        <button class="tab-btn active" onclick="switchTab('search')">
-                            <i class="fas fa-search"></i> 搜索结果
-                        </button>
-                        <button class="tab-btn" onclick="switchTab('playlist')">
-                            <i class="fas fa-list-music"></i> 网易云歌单
-                        </button>
-                    </div>
-
-                    <div id="searchTab" class="tab-content active">
-                        <div class="search-results" id="searchResults">
-                            <div class="empty-state">
-                                <i class="fas fa-search"></i>
-                                <div>在上方搜索框输入关键词开始搜索音乐</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="playlistTab" class="tab-content">
-                        <div class="playlist-input-container">
-                            <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
-                            <button class="playlist-btn" onclick="parsePlaylist()">
-                                <i class="fas fa-check"></i> 解析歌单
-                            </button>
-                        </div>
-                        <div class="search-results" id="playlistResults">
-                            <div class="empty-state">
-                                <i class="fas fa-list-ol"></i>
-                                <div>输入歌单ID后点击解析</div>
-                            </div>
-                        </div>
+            <div id="searchTab" class="tab-content active">
+                <div class="search-results" id="searchResults">
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <div>在上方搜索框输入关键词开始搜索音乐</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 第二页：播放器 -->
-            <div class="mobile-page" id="mobilePage1">
-                <div class="player-section mobile-player-page">
-                    <div class="current-song">
-                        <div class="current-cover-container">
-                            <img class="current-cover" id="currentCover" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjIyMCIgdmlld0JveD0iMCAwIDIyMCAyMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSIyMCIvPgo8cGF0aCBkPSJNMTEwIDcwTDE0MCAx MTBIMTIwVjE1MEg5MFYxMTBINzBMMTEwIDcwWiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=" alt="专辑封面">
-                        </div>
-                        <div class="current-info">
-                            <h3 id="currentTitle">未选择歌曲</h3>
-                            <p id="currentArtist">请搜索并选择要播放的歌曲</p>
-                        </div>
-                    </div>
-
-                    <div class="player-controls">
-                        <button class="control-btn small" onclick="previousSong()">
-                            <i class="fas fa-step-backward"></i>
-                        </button>
-                        <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()">
-                            <i class="fas fa-play"></i>
-                        </button>
-                        <button class="control-btn small" onclick="nextSong()">
-                            <i class="fas fa-step-forward"></i>
-                        </button>
-                    </div>
-
-                    <div class="progress-container">
-                        <div class="progress-bar" onclick="seekTo(event)">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                        <div class="time-info">
-                            <span id="currentTime">0:00</span>
-                            <span id="totalTime">0:00</span>
-                        </div>
-                    </div>
-
-                    <!-- 音质选择 -->
-                    <div class="quality-container">
-                        <div class="quality-label">
-                            <i class="fas fa-music"></i>
-                            <span>音质</span>
-                        </div>
-                        <select class="quality-select" id="qualitySelect">
-                            <option value="128">标准 128K</option>
-                            <option value="192">较高 192K</option>
-                            <option value="320" selected>高品质 320K</option>
-                            <option value="740">无损 FLAC</option>
-                            <option value="999">Hi-Res</option>
-                        </select>
-                    </div>
-
-                    <div class="volume-container">
-                        <i class="fas fa-volume-up volume-icon"></i>
-                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" onchange="setVolume(this.value)">
-                    </div>
-
-                    <!-- 下载区域 -->
-                    <div class="download-container">
-                        <button class="download-btn" onclick="downloadCurrentSong()" id="downloadSongBtn" disabled>
-                            <i class="fas fa-download"></i>
-                            <span>下载音乐</span>
-                        </button>
-                        <button class="download-btn" onclick="downloadCurrentLyric()" id="downloadLyricBtn" disabled>
-                            <i class="fas fa-file-text"></i>
-                            <span>下载歌词</span>
-                        </button>
-                    </div>
-
-                    <audio id="audioPlayer" preload="metadata"></audio>
+            <div id="playlistTab" class="tab-content">
+                <div class="playlist-input-container">
+                    <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
+                    <button class="playlist-btn" onclick="parsePlaylist()">
+                        <i class="fas fa-check"></i> 解析歌单
+                    </button>
                 </div>
-            </div>
-
-            <!-- 第三页：歌词 -->
-            <div class="mobile-page" id="mobilePage2">
-                <div class="lyrics-section mobile-lyrics-page">
-                    <h2 class="section-title">
-                        <i class="fas fa-align-left"></i>
-                        歌词
-                    </h2>
-                    <div class="lyrics-container" id="lyricsContainer">
-                        <div class="lyric-line">暂无歌词</div>
+                <div class="search-results" id="playlistResults">
+                    <div class="empty-state">
+                        <i class="fas fa-list-ol"></i>
+                        <div>输入歌单ID后点击解析</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 桌面端布局（原有布局）-->
-        <div class="desktop-layout">
-            <!-- 搜索结果区域 -->
-            <div class="content-section">
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('search')">
-                        <i class="fas fa-search"></i> 搜索结果
-                    </button>
-                    <button class="tab-btn" onclick="switchTab('playlist')">
-                        <i class="fas fa-list-music"></i> 网易云歌单
-                    </button>
+        <!-- 播放器区域 -->
+        <div class="player-section">
+            <div class="current-song">
+                <div class="current-cover-container">
+                    <img class="current-cover" id="currentCover" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjIyMCIgdmlld0JveD0iMCAwIDIyMCAyMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSIyMCIvPgo8cGF0aCBkPSJNMTEwIDcwTDE0MCAx MTBIMTIwVjE1MEg5MFYxMTBINzBMMTEwIDcwWiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=" alt="专辑封面">
                 </div>
-
-                <div id="searchTab" class="tab-content active">
-                    <div class="search-results" id="searchResults">
-                        <div class="empty-state">
-                            <i class="fas fa-search"></i>
-                            <div>在上方搜索框输入关键词开始搜索音乐</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="playlistTab" class="tab-content">
-                    <div class="playlist-input-container">
-                        <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
-                        <button class="playlist-btn" onclick="parsePlaylist()">
-                            <i class="fas fa-check"></i> 解析歌单
-                        </button>
-                    </div>
-                    <div class="search-results" id="playlistResults">
-                        <div class="empty-state">
-                            <i class="fas fa-list-ol"></i>
-                            <div>输入歌单ID后点击解析</div>
-                        </div>
-                    </div>
+                <div class="current-info">
+                    <h3 id="currentTitle">未选择歌曲</h3>
+                    <p id="currentArtist">请搜索并选择要播放的歌曲</p>
                 </div>
             </div>
 
-            <!-- 播放器区域 -->
-            <div class="player-section">
-                <div class="current-song">
-                    <div class="current-cover-container">
-                        <img class="current-cover" id="currentCover" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjIyMCIgdmlld0JveD0iMCAwIDIyMCAyMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHJ4PSIyMCIvPgo8cGF0aCBkPSJNMTEwIDcwTDE0MCAx MTBIMTIwVjE1MEg5MFYxMTBINzBMMTEwIDcwWiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+Cjwvc3ZnPgo=" alt="专辑封面">
-                    </div>
-                    <div class="current-info">
-                        <h3 id="currentTitle">未选择歌曲</h3>
-                        <p id="currentArtist">请搜索并选择要播放的歌曲</p>
-                    </div>
-                </div>
+            <div class="player-controls">
+                <button class="control-btn small" onclick="previousSong()">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn small" onclick="nextSong()">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
 
-                <div class="player-controls">
-                    <button class="control-btn small" onclick="previousSong()">
-                        <i class="fas fa-step-backward"></i>
-                    </button>
-                    <button class="control-btn play-btn" id="playBtn" onclick="togglePlay()">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button class="control-btn small" onclick="nextSong()">
-                        <i class="fas fa-step-forward"></i>
-                    </button>
+            <div class="progress-container">
+                <div class="progress-bar" onclick="seekTo(event)">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
-
-                <div class="progress-container">
-                    <div class="progress-bar" onclick="seekTo(event)">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="time-info">
-                        <span id="currentTime">0:00</span>
-                        <span id="totalTime">0:00</span>
-                    </div>
+                <div class="time-info">
+                    <span id="currentTime">0:00</span>
+                    <span id="totalTime">0:00</span>
                 </div>
+            </div>
 
             <!-- 音质选择 -->
             <div class="quality-container">
@@ -304,6 +170,13 @@ const BASE_HTML = `<!DOCTYPE html>
             <div class="lyrics-container" id="lyricsContainer">
                 <div class="lyric-line">暂无歌词</div>
             </div>
+        </div>
+
+        <!-- 移动端分页指示器 -->
+        <div class="mobile-page-indicators">
+            <div class="page-indicator active" onclick="switchMobilePage(0)"></div>
+            <div class="page-indicator" onclick="switchMobilePage(1)"></div>
+            <div class="page-indicator" onclick="switchMobilePage(2)"></div>
         </div>
     </div>
 
@@ -1128,7 +1001,6 @@ function getCSS() {
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
             gap: 8px;
             z-index: 1000;
             background: rgba(0, 0, 0, 0.6);
@@ -1143,58 +1015,12 @@ function getCSS() {
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.4);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .page-indicator.active {
             background: #ff6b6b;
             transform: scale(1.2);
-        }
-
-        .mobile-pages-container {
-            display: none;
-            position: relative;
-            width: 100%;
-            height: calc(100vh - 100px);
-            overflow: hidden;
-        }
-
-        .mobile-page {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.3s ease;
-            transform: translateX(100%);
-        }
-
-        .mobile-page.active {
-            transform: translateX(0);
-        }
-
-        .mobile-page.prev {
-            transform: translateX(-100%);
-        }
-
-        .desktop-layout {
-            display: block;
-        }
-
-        .mobile-search-page,
-        .mobile-player-page,
-        .mobile-lyrics-page {
-            height: 100%;
-            overflow-y: auto;
-        }
-
-        .mobile-lyrics-page {
-            height: 100%;
-            overflow-y: auto;
-        }
-
-        .mobile-lyrics-page .lyrics-container {
-            height: 60vh;
-            overflow-y: auto;
         }
 
         /* 歌曲操作按钮 */
@@ -1382,23 +1208,43 @@ function getCSS() {
                 height: calc(100vh - 120px);
             }
             
-            /* 隐藏桌面端布局 */
-            .desktop-layout {
-                display: none;
-            }
-            
-            /* 显示移动端布局 */
-            .mobile-pages-container {
-                display: block;
-            }
-            
+            /* 移动端显示分页指示器 */
             .mobile-page-indicators {
                 display: flex;
             }
             
+            /* 默认隐藏所有区域 */
             .content-section, .player-section, .lyrics-section {
+                display: none;
                 padding: 20px 15px;
                 border-radius: 15px;
+                height: calc(100vh - 160px);
+                overflow-y: auto;
+            }
+            
+            /* 显示当前激活的页面 */
+            .content-section.mobile-active {
+                display: flex;
+            }
+            
+            .player-section.mobile-active {
+                display: flex;
+            }
+            
+            .lyrics-section.mobile-active {
+                display: flex;
+            }
+            
+            /* 移动端滑动优化 */
+            .main-container {
+                touch-action: pan-x;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .content-section, .player-section, .lyrics-section {
+                will-change: transform, opacity;
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
             }
             
             .current-cover {
@@ -1434,7 +1280,7 @@ function getCSS() {
             
             .song-item {
                 padding: 12px 15px;
-                border-radius: 10px;
+            border-radius: 10px;
             }
             
             .song-index {
@@ -1445,7 +1291,7 @@ function getCSS() {
             }
             
             .song-name {
-                font-size: 14px;
+            font-size: 14px;
                 margin-bottom: 4px;
             }
             
@@ -1654,7 +1500,7 @@ function getJS() {
                 return;
             }
             
-            // 移动端搜索时跳转到第一页
+            // 移动端搜索时显示搜索结果页面
             if (window.innerWidth <= 768) {
                 switchMobilePage(0);
             }
@@ -2151,9 +1997,9 @@ function getJS() {
             try {
                 if (audioPlayer.duration && isFinite(audioPlayer.duration) && audioPlayer.currentTime >= 0) {
                     const percent = Math.min(100, Math.max(0, (audioPlayer.currentTime / audioPlayer.duration) * 100));
-                    progressFill.style.width = percent + '%';
-                    currentTimeSpan.textContent = formatTime(audioPlayer.currentTime);
-                    updateLyricHighlight();
+            progressFill.style.width = percent + '%';
+            currentTimeSpan.textContent = formatTime(audioPlayer.currentTime);
+            updateLyricHighlight();
                 } else {
                     // 如果没有有效的duration，显示当前时间
                     if (audioPlayer.currentTime >= 0) {
@@ -2167,7 +2013,7 @@ function getJS() {
 
         audioPlayer.addEventListener('loadedmetadata', () => {
             if (audioPlayer.duration && isFinite(audioPlayer.duration)) {
-                totalTimeSpan.textContent = formatTime(audioPlayer.duration);
+            totalTimeSpan.textContent = formatTime(audioPlayer.duration);
             } else {
                 totalTimeSpan.textContent = '--:--';
             }
@@ -2434,18 +2280,30 @@ function getJS() {
         function switchMobilePage(pageIndex) {
             if (window.innerWidth > 768) return; // 只在移动端生效
             
-            const pages = document.querySelectorAll('.mobile-page');
+            // 如果是通过滑动触发的，使用动画版本
+            if (isDragging) {
+                switchMobilePageWithAnimation(pageIndex);
+                return;
+            }
+            
+            const sections = [
+                document.querySelector('.content-section'),
+                document.querySelector('.player-section'),
+                document.querySelector('.lyrics-section')
+            ];
             const indicators = document.querySelectorAll('.page-indicator');
             
-            // 更新页面状态
-            pages.forEach((page, index) => {
-                page.classList.remove('active', 'prev');
-                if (index === pageIndex) {
-                    page.classList.add('active');
-                } else if (index < pageIndex) {
-                    page.classList.add('prev');
+            // 隐藏所有区域
+            sections.forEach(section => {
+                if (section) {
+                    section.classList.remove('mobile-active');
                 }
             });
+            
+            // 显示当前页面
+            if (sections[pageIndex]) {
+                sections[pageIndex].classList.add('mobile-active');
+            }
             
             // 更新指示器
             indicators.forEach((indicator, index) => {
@@ -2455,44 +2313,247 @@ function getJS() {
             currentMobilePage = pageIndex;
         }
         
+        let startY = 0;
+        let currentY = 0;
+        let isHorizontalSwipe = false;
+        let swipeDirection = null;
+        
         function handleTouchStart(e) {
             if (window.innerWidth > 768) return;
+            
+            // 检查是否点击在不可滑动区域（只排除真正需要交互的元素）
+            const target = e.target;
+            if (target.closest('.progress-bar') || 
+                target.closest('.volume-slider') || 
+                target.closest('.search-input') ||
+                target.closest('.playlist-input') ||
+                target.closest('button') ||
+                target.closest('select')) {
+                return;
+            }
+            
             startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            currentX = startX;
+            currentY = startY;
             isDragging = true;
+            isHorizontalSwipe = false;
+            swipeDirection = null;
+            
+            // 添加视觉反馈
+            document.body.style.userSelect = 'none';
         }
         
         function handleTouchMove(e) {
             if (!isDragging || window.innerWidth > 768) return;
+            
             currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+            
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            // 判断滑动方向（只在开始时判断一次）
+            if (swipeDirection === null && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // 水平滑动
+                    swipeDirection = 'horizontal';
+                    isHorizontalSwipe = true;
+                    
+                    // 阻止垂直滚动
+                    e.preventDefault();
+                    
+                    // 提供实时视觉反馈
+                    const sections = [
+                        document.querySelector('.content-section'),
+                        document.querySelector('.player-section'),
+                        document.querySelector('.lyrics-section')
+                    ];
+                    
+                    const currentSection = sections[currentMobilePage];
+                    if (currentSection && Math.abs(deltaX) > 10) {
+                        // 添加轻微的变换效果来指示滑动方向
+                        const opacity = Math.max(0.7, 1 - Math.abs(deltaX) / 200);
+                        currentSection.style.opacity = opacity;
+                        currentSection.style.transform = \`translateX(\${deltaX * 0.1}px)\`;
+                    }
+                } else {
+                    // 垂直滑动，允许正常的滚动行为
+                    swipeDirection = 'vertical';
+                    isHorizontalSwipe = false;
+                    isDragging = false; // 停止横滑检测
+                    document.body.style.userSelect = '';
+                }
+            }
+            
+            // 如果已确定为水平滑动，继续阻止默认行为
+            if (isHorizontalSwipe) {
+                e.preventDefault();
+            }
         }
         
         function handleTouchEnd(e) {
             if (!isDragging || window.innerWidth > 768) return;
             
             const deltaX = currentX - startX;
-            const threshold = 50; // 滑动阈值
+            const threshold = 80; // 增加滑动阈值，避免误触
+            const velocity = Math.abs(deltaX) / 300; // 简单的速度计算
             
-            if (Math.abs(deltaX) > threshold) {
+            // 恢复样式
+            document.body.style.userSelect = '';
+            const sections = [
+                document.querySelector('.content-section'),
+                document.querySelector('.player-section'),
+                document.querySelector('.lyrics-section')
+            ];
+            
+            const currentSection = sections[currentMobilePage];
+            if (currentSection) {
+                currentSection.style.opacity = '';
+                currentSection.style.transform = '';
+            }
+            
+            // 只有在水平滑动时才判断是否需要切换页面
+            let shouldSwitch = false;
+            let newPage = currentMobilePage;
+            
+            if (isHorizontalSwipe && (Math.abs(deltaX) > threshold || velocity > 0.5)) {
                 if (deltaX > 0 && currentMobilePage > 0) {
                     // 右滑，上一页
-                    switchMobilePage(currentMobilePage - 1);
+                    newPage = currentMobilePage - 1;
+                    shouldSwitch = true;
                 } else if (deltaX < 0 && currentMobilePage < 2) {
                     // 左滑，下一页
-                    switchMobilePage(currentMobilePage + 1);
+                    newPage = currentMobilePage + 1;
+                    shouldSwitch = true;
                 }
             }
             
+            if (shouldSwitch) {
+                // 添加切换动画
+                switchMobilePageWithAnimation(newPage);
+                
+                // 触觉反馈（如果支持）
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+                
+                // 显示页面提示
+                showPageSwitchFeedback(newPage);
+            }
+            
+            // 重置所有状态
             isDragging = false;
+            isHorizontalSwipe = false;
+            swipeDirection = null;
             startX = 0;
             currentX = 0;
+            startY = 0;
+            currentY = 0;
         }
         
-        // 添加触摸事件监听器
-        const mobileContainer = document.querySelector('.mobile-pages-container');
-        if (mobileContainer) {
-            mobileContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
-            mobileContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
-            mobileContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+        function switchMobilePageWithAnimation(pageIndex) {
+            const sections = [
+                document.querySelector('.content-section'),
+                document.querySelector('.player-section'),
+                document.querySelector('.lyrics-section')
+            ];
+            const indicators = document.querySelectorAll('.page-indicator');
+            
+            // 添加切换动画
+            const currentSection = sections[currentMobilePage];
+            const newSection = sections[pageIndex];
+            
+            if (currentSection && newSection) {
+                // 当前页面淡出
+                currentSection.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                currentSection.style.opacity = '0';
+                currentSection.style.transform = pageIndex > currentMobilePage ? 'translateX(-50px)' : 'translateX(50px)';
+                
+                setTimeout(() => {
+                    // 隐藏当前页面
+                    currentSection.classList.remove('mobile-active');
+                    currentSection.style.opacity = '';
+                    currentSection.style.transform = '';
+                    currentSection.style.transition = '';
+                    
+                    // 显示新页面
+                    newSection.classList.add('mobile-active');
+                    newSection.style.opacity = '0';
+                    newSection.style.transform = pageIndex > currentMobilePage ? 'translateX(50px)' : 'translateX(-50px)';
+                    newSection.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    
+                    // 强制重绘
+                    newSection.offsetHeight;
+                    
+                    // 新页面淡入
+                    newSection.style.opacity = '1';
+                    newSection.style.transform = 'translateX(0)';
+                    
+                    setTimeout(() => {
+                        newSection.style.transition = '';
+                    }, 300);
+                }, 150);
+            } else {
+                // 降级到普通切换
+                switchMobilePage(pageIndex);
+            }
+            
+            // 更新指示器
+            indicators.forEach((indicator, index) => {
+                indicator.classList.toggle('active', index === pageIndex);
+            });
+            
+            currentMobilePage = pageIndex;
+        }
+        
+        function showPageSwitchFeedback(pageIndex) {
+            const pageNames = ['搜索', '播放器', '歌词'];
+            const pageName = pageNames[pageIndex] || '页面';
+            
+            // 创建临时提示元素
+            const feedback = document.createElement('div');
+            feedback.style.cssText = \`
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 20px;
+                font-size: 14px;
+                z-index: 2000;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            \`;
+            feedback.textContent = pageName;
+            
+            document.body.appendChild(feedback);
+            
+            // 显示动画
+            setTimeout(() => {
+                feedback.style.opacity = '1';
+            }, 10);
+            
+            // 自动消失
+            setTimeout(() => {
+                feedback.style.opacity = '0';
+                setTimeout(() => {
+                    if (feedback.parentNode) {
+                        document.body.removeChild(feedback);
+                    }
+                }, 200);
+            }, 800);
+        }
+        
+        // 添加触摸事件监听器到主容器
+        const mainContainer = document.querySelector('.main-container');
+        if (mainContainer) {
+            mainContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+            mainContainer.addEventListener('touchmove', handleTouchMove, { passive: false }); // 需要调用preventDefault
+            mainContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
         }
         
         // 添加移动端触摸支持
@@ -2523,10 +2584,84 @@ function getJS() {
         });
         adjustMobileViewport();
         
+        // 初始化页面显示
+        function initPageDisplay() {
+            if (window.innerWidth <= 768) {
+                // 移动端：默认显示搜索页面
+                switchMobilePage(0);
+            } else {
+                // 桌面端：确保所有区域都显示
+                const sections = [
+                    document.querySelector('.content-section'),
+                    document.querySelector('.player-section'),
+                    document.querySelector('.lyrics-section')
+                ];
+                sections.forEach(section => {
+                    if (section) {
+                        section.classList.remove('mobile-active');
+                    }
+                });
+            }
+        }
+
+        // 显示滑动提示
+        function showSwipeHint() {
+            if (window.innerWidth > 768) return;
+            
+            const hint = document.createElement('div');
+            hint.style.cssText = \`
+                position: fixed;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 107, 107, 0.9);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 12px;
+                z-index: 1500;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            \`;
+            hint.innerHTML = '<i class="fas fa-hand-paper"></i> 左右滑动切换页面';
+            
+            document.body.appendChild(hint);
+            
+            // 显示动画
+            setTimeout(() => {
+                hint.style.opacity = '1';
+            }, 100);
+            
+            // 自动消失
+            setTimeout(() => {
+                hint.style.opacity = '0';
+                setTimeout(() => {
+                    if (hint.parentNode) {
+                        document.body.removeChild(hint);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
         window.addEventListener('load', () => {
+            initPageDisplay();
             setTimeout(() => {
                 showNotification('欢迎使用云音乐播放器！', 'success');
+                // 在移动端显示滑动提示
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        showSwipeHint();
+                    }, 2000);
+                }
             }, 1000);
+        });
+
+        window.addEventListener('resize', () => {
+            initPageDisplay();
         });
   `;
 }
