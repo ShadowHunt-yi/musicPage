@@ -2,7 +2,7 @@
 // 配置信息
 const APP_CONFIG = {
   title: '云音乐 - 在线音乐播放器',
-  version: '2.0.0',
+  version: '2.1.2',
   apiBase: 'https://music-api.gdstudio.xyz/api.php'
 };
 
@@ -65,6 +65,18 @@ const BASE_HTML = `<!DOCTYPE html>
                 <button class="tab-btn" onclick="switchTab('playlist')">
                     <i class="fas fa-list-music"></i> 网易云歌单
                 </button>
+                <div id="savedPlaylistTabs" class="saved-playlist-tabs"></div>
+                <!-- 移动端下拉菜单 -->
+                <div class="mobile-playlist-dropdown">
+                    <button class="dropdown-btn" id="mobilePlaylistBtn" onclick="toggleMobilePlaylistDropdown()">
+                        <i class="fas fa-bookmark"></i>
+                        <span>我的歌单</span>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </button>
+                    <div class="dropdown-menu" id="mobilePlaylistMenu">
+                        <!-- 动态生成的下拉选项 -->
+                    </div>
+                </div>
             </div>
 
             <div id="searchTab" class="tab-content active">
@@ -78,7 +90,7 @@ const BASE_HTML = `<!DOCTYPE html>
 
             <div id="playlistTab" class="tab-content">
                 <div class="playlist-input-container">
-                    <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID...">
+                    <input type="text" id="playlistIdInput" class="playlist-input" placeholder="输入网易云歌单ID或分享链接...">
                     <button class="playlist-btn" onclick="parsePlaylist()">
                         <i class="fas fa-check"></i> 解析歌单
                     </button>
@@ -86,7 +98,7 @@ const BASE_HTML = `<!DOCTYPE html>
                 <div class="search-results" id="playlistResults">
                     <div class="empty-state">
                         <i class="fas fa-list-ol"></i>
-                        <div>输入歌单ID后点击解析</div>
+                        <div>输入歌单ID或分享链接后点击解析</div>
                     </div>
                 </div>
             </div>
@@ -552,6 +564,17 @@ function getCSS() {
             display: flex;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             margin-bottom: 20px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .saved-playlist-tabs {
+            display: flex;
+            gap: 5px;
         }
 
         .tab-btn {
@@ -563,6 +586,180 @@ function getCSS() {
             font-size: 16px;
             transition: all 0.3s ease;
             border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .saved-playlist-tab {
+            padding: 8px 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .saved-playlist-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        .saved-playlist-tab.active {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: rgba(255, 107, 107, 0.5);
+            color: #ff6b6b;
+        }
+        
+        .saved-playlist-tab .close-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .saved-playlist-tab .close-btn:hover {
+            background: rgba(255, 107, 107, 0.8);
+            color: #fff;
+        }
+        
+        /* 移动端下拉菜单样式 */
+        .mobile-playlist-dropdown {
+            display: none;
+            position: relative;
+        }
+        
+        /* 桌面端默认显示tab，隐藏下拉菜单 */
+        @media (min-width: 481px) {
+            .mobile-playlist-dropdown {
+                display: none !important;
+            }
+        }
+        
+        .dropdown-btn {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        
+        .dropdown-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        .dropdown-btn.active {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: rgba(255, 107, 107, 0.5);
+            color: #ff6b6b;
+        }
+        
+        .dropdown-arrow {
+            transition: transform 0.3s ease;
+        }
+        
+        .dropdown-btn.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            margin-top: 5px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown-item-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 8px;
+        }
+        
+        .dropdown-item-close {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .dropdown-item-close:hover {
+            background: rgba(255, 107, 107, 0.8);
+            color: #fff;
         }
 
         .tab-btn:hover {
@@ -1400,6 +1597,28 @@ function getCSS() {
                 font-size: 14px;
             }
             
+            .saved-playlist-tab {
+                padding: 6px 10px;
+                font-size: 11px;
+                max-width: 100px;
+                gap: 4px;
+            }
+            
+            .saved-playlist-tab .close-btn {
+                width: 12px;
+                height: 12px;
+                font-size: 8px;
+            }
+            
+            /* 移动端显示下拉菜单，隐藏桌面端tab */
+            .saved-playlist-tabs {
+                display: none !important;
+            }
+            
+            .mobile-playlist-dropdown {
+                display: block !important;
+            }
+            
             .playlist-input {
                 padding: 10px 15px;
                 font-size: 14px;
@@ -1490,6 +1709,60 @@ function getJS() {
         const canvas = document.getElementById('waveCanvas');
         const canvasCtx = canvas.getContext('2d');
         let animationId;
+
+        // 标签页切换函数 - 需要在HTML onclick中使用，所以放在前面
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn, .saved-playlist-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // 关闭移动端下拉菜单
+            closeMobilePlaylistDropdown();
+        }
+        
+        // 移动端下拉菜单切换函数
+        function toggleMobilePlaylistDropdown() {
+            const btn = document.getElementById('mobilePlaylistBtn');
+            const menu = document.getElementById('mobilePlaylistMenu');
+            
+            if (!btn || !menu) {
+                return;
+            }
+            
+            if (menu.classList.contains('show')) {
+                closeMobilePlaylistDropdown();
+            } else {
+                btn.classList.add('active');
+                menu.classList.add('show');
+                
+                // 点击外部关闭下拉菜单
+                setTimeout(() => {
+                    document.addEventListener('click', handleOutsideClick);
+                }, 100);
+            }
+        }
+        
+        function closeMobilePlaylistDropdown() {
+            const btn = document.getElementById('mobilePlaylistBtn');
+            const menu = document.getElementById('mobilePlaylistMenu');
+            
+            btn.classList.remove('active');
+            menu.classList.remove('show');
+            document.removeEventListener('click', handleOutsideClick);
+        }
+        
+        function handleOutsideClick(event) {
+            const dropdown = document.querySelector('.mobile-playlist-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                closeMobilePlaylistDropdown();
+            }
+        }
 
         async function searchMusic() {
             const keyword = document.getElementById('searchInput').value.trim();
@@ -2191,24 +2464,298 @@ function getJS() {
             }
         }
 
-        function switchTab(tabName) {
+
+        // 解析分享链接获取歌单ID和名称
+        function parseShareLink(input) {
+            // 匹配网易云音乐分享链接 - 支持多种格式
+            const shareRegexes = [
+                // 格式1: 「歌单名」: https://y.music.163.com/m/playlist?id=数字
+                /「(.+?)」.*?(?:https?:\\/\\/)?.*?(?:music\\.163\\.com|y\\.music\\.163\\.com).*?[?&]id=(\\d+)/,
+                // 格式2: 直接的URL格式
+                /(?:https?:\\/\\/)?.*?(?:music\\.163\\.com|y\\.music\\.163\\.com).*?[?&]id=(\\d+)/,
+                // 格式3: 只有「歌单名」和id=数字
+                /「(.+?)」.*?id[=:](\\d+)/
+            ];
+            
+            for (const regex of shareRegexes) {
+                const match = input.match(regex);
+                if (match) {
+                    // 根据正则表达式的捕获组数量来判断
+                    if (match.length >= 3) {
+                        // 有两个捕获组：歌单名和ID
+                        return {
+                            name: match[1],
+                            id: match[2]
+                        };
+                    } else if (match.length >= 2) {
+                        // 只有一个捕获组：ID
+                        return {
+                            name: null,
+                            id: match[1]
+                        };
+                    }
+                }
+            }
+            
+            // 如果不是分享链接，检查是否是纯数字ID
+            if (/^\\d+$/.test(input.trim())) {
+                return {
+                    name: null,
+                    id: input.trim()
+                };
+            }
+            return null;
+        }
+
+        // 本地存储管理
+        function getSavedPlaylists() {
+            try {
+                const saved = localStorage.getItem('savedPlaylists');
+                return saved ? JSON.parse(saved) : [];
+            } catch (error) {
+                console.error('读取本地歌单失败:', error);
+                return [];
+            }
+        }
+
+        function savePlaylistToLocal(playlistInfo) {
+            try {
+                let savedPlaylists = getSavedPlaylists();
+                
+                // 只保存歌单的基本信息（名字和ID），不保存完整歌单数据
+                const playlistToSave = {
+                    id: playlistInfo.id,
+                    name: playlistInfo.name,
+                    timestamp: Date.now()
+                };
+                
+                // 检查是否已存在
+                const existingIndex = savedPlaylists.findIndex(p => p.id === playlistInfo.id);
+                if (existingIndex !== -1) {
+                    // 更新现有歌单
+                    savedPlaylists[existingIndex] = playlistToSave;
+                } else {
+                    // 添加新歌单，最多保存3个
+                    savedPlaylists.unshift(playlistToSave);
+                    if (savedPlaylists.length > 3) {
+                        savedPlaylists = savedPlaylists.slice(0, 3);
+                    }
+                }
+                
+                localStorage.setItem('savedPlaylists', JSON.stringify(savedPlaylists));
+                updateSavedPlaylistTabs();
+                showNotification('歌单已保存到本地', 'success');
+            } catch (error) {
+                console.error('保存歌单失败:', error);
+                showNotification('保存歌单失败', 'error');
+            }
+        }
+
+        function removeSavedPlaylist(playlistId) {
+            try {
+                let savedPlaylists = getSavedPlaylists();
+                savedPlaylists = savedPlaylists.filter(p => p.id !== playlistId);
+                localStorage.setItem('savedPlaylists', JSON.stringify(savedPlaylists));
+                updateSavedPlaylistTabs();
+                
+                // 如果当前显示的就是被删除的歌单，切换到搜索页面
+                const activeTab = document.querySelector('.saved-playlist-tab.active');
+                if (activeTab && activeTab.dataset.playlistId === playlistId) {
+                    switchTab('search');
+                }
+                
+                showNotification('歌单已删除', 'info');
+            } catch (error) {
+                console.error('删除歌单失败:', error);
+            }
+        }
+
+        function updateSavedPlaylistTabs() {
+            const savedPlaylists = getSavedPlaylists();
+            const tabsContainer = document.getElementById('savedPlaylistTabs');
+            const mobileMenu = document.getElementById('mobilePlaylistMenu');
+            const mobileBtn = document.getElementById('mobilePlaylistBtn');
+            
+            
+            // 清空现有内容
+            if (tabsContainer) tabsContainer.innerHTML = '';
+            if (mobileMenu) mobileMenu.innerHTML = '';
+            
+            // 清空现有的保存歌单内容区域
+            const existingSavedContents = document.querySelectorAll('[id^="savedPlaylist"][id$="Tab"]');
+            existingSavedContents.forEach(content => {
+                if (content.parentNode) {
+                    content.parentNode.removeChild(content);
+                }
+            });
+            
+            // 更新移动端按钮显示状态
+            if (mobileBtn) {
+                if (savedPlaylists.length === 0) {
+                    mobileBtn.style.display = 'none';
+                } else {
+                    mobileBtn.style.display = 'flex';
+                }
+            }
+            
+            savedPlaylists.forEach(playlist => {
+                // 创建桌面端tab按钮
+                const tabBtn = document.createElement('button');
+                tabBtn.className = 'saved-playlist-tab';
+                tabBtn.dataset.playlistId = playlist.id;
+                tabBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    switchToSavedPlaylist(playlist.id);
+                };
+                
+                tabBtn.innerHTML = \`
+                    <span class="playlist-name">\${playlist.name}</span>
+                    <button class="close-btn" onclick="event.stopPropagation(); removeSavedPlaylist('\${playlist.id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                \`;
+                
+                if (tabsContainer) {
+                    tabsContainer.appendChild(tabBtn);
+                }
+                
+                // 创建移动端下拉选项
+                const dropdownItem = document.createElement('div');
+                dropdownItem.className = 'dropdown-item';
+                dropdownItem.onclick = (e) => {
+                    e.stopPropagation();
+                    switchToSavedPlaylist(playlist.id);
+                    closeMobilePlaylistDropdown();
+                };
+                
+                dropdownItem.innerHTML = \`
+                    <div class="dropdown-item-name">\${playlist.name}</div>
+                    <button class="dropdown-item-close" onclick="event.stopPropagation(); removeSavedPlaylist('\${playlist.id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                \`;
+                
+                if (mobileMenu) {
+                    mobileMenu.appendChild(dropdownItem);
+                }
+                
+                // 创建内容区域，添加到与其他tab内容相同的父容器中
+                const contentDiv = document.createElement('div');
+                contentDiv.id = \`savedPlaylist\${playlist.id}Tab\`;
+                contentDiv.className = 'tab-content';
+                contentDiv.innerHTML = \`
+                    <div class="search-results" id="savedPlaylist\${playlist.id}Results">
+                        <div class="empty-state">
+                            <i class="fas fa-music"></i>
+                            <div>正在加载歌单...</div>
+                        </div>
+                    </div>
+                \`;
+                
+                // 将内容区域添加到content-section中，与searchTab和playlistTab同级
+                const contentSection = document.querySelector('.content-section');
+                if (contentSection) {
+                    contentSection.appendChild(contentDiv);
+                }
+            });
+        }
+
+        async function switchToSavedPlaylist(playlistId) {
+            const savedPlaylists = getSavedPlaylists();
+            const playlist = savedPlaylists.find(p => p.id === playlistId);
+            
+            if (!playlist) return;
+            
+            // 切换tab状态
+            document.querySelectorAll('.tab-btn, .saved-playlist-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            
+            const targetTab = document.querySelector(\`[data-playlist-id="\${playlistId}"]\`);
+            const targetContent = document.getElementById(\`savedPlaylist\${playlistId}Tab\`);
+            
+            if (targetTab && targetContent) {
+                targetTab.classList.add('active');
+                targetContent.classList.add('active');
+                
+                // 显示加载状态
+                const resultsContainer = document.getElementById(\`savedPlaylist\${playlistId}Results\`);
+                resultsContainer.innerHTML = \`
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <div>正在加载歌单 "\${playlist.name}"...</div>
+                    </div>
+                \`;
+                
+                // 重新查询歌单数据
+                try {
+                    const response = await fetch(\`\${API_BASE}?types=playlist&id=\${playlistId}&source=netease\`);
+                    const data = await response.json();
 
-            document.getElementById(tabName + 'Tab').classList.add('active');
-            event.currentTarget.classList.add('active');
+                    let songs = [];
+                    if (data && data.playlist && data.playlist.tracks) {
+                        songs = data.playlist.tracks.map(track => ({
+                            name: track.name,
+                            artist: track.ar.map(a => a.name).join(' / '),
+                            album: track.al.name,
+                            id: track.id,
+                            pic_id: track.al.pic_id_str || track.al.pic_str || track.al.pic,
+                            lyric_id: track.id,
+                            source: 'netease'
+                        }));
+                    } else if (data && data.tracks) {
+                        songs = data.tracks.map(track => ({
+                            name: track.name,
+                            artist: track.ar.map(a => a.name).join(' / '),
+                            album: track.al.name,
+                            id: track.id,
+                            pic_id: track.al.pic_id_str || track.al.pic_str || track.al.pic,
+                            lyric_id: track.id,
+                            source: 'netease'
+                        }));
+                    }
+
+                    if (songs.length > 0) {
+                        // 显示歌单内容
+                        displaySearchResults(songs, \`savedPlaylist\${playlistId}Results\`, songs);
+                        showNotification(\`歌单 "\${playlist.name}" 加载完成\`, 'success');
+                    } else {
+                        resultsContainer.innerHTML = \`
+                            <div class="error">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <div>歌单加载失败，请稍后重试</div>
+                            </div>
+                        \`;
+                    }
+                } catch (error) {
+                    console.error('加载保存的歌单失败:', error);
+                    resultsContainer.innerHTML = \`
+                        <div class="error">
+                            <i class="fas fa-wifi"></i>
+                            <div>网络连接失败，请检查网络后重试</div>
+                        </div>
+                    \`;
+                }
+            }
         }
 
         async function parsePlaylist() {
-            const playlistId = document.getElementById('playlistIdInput').value.trim();
-            if (!playlistId) {
-                showNotification('请输入歌单ID', 'warning');
+            const input = document.getElementById('playlistIdInput').value.trim();
+            if (!input) {
+                showNotification('请输入歌单ID或分享链接', 'warning');
                 return;
             }
+
+            const parseResult = parseShareLink(input);
+            if (!parseResult) {
+                showNotification('无法解析输入内容，请检查格式', 'error');
+                return;
+            }
+
+            const { name: playlistName, id: playlistId } = parseResult;
 
             const resultsContainer = document.getElementById('playlistResults');
             resultsContainer.innerHTML = \`
@@ -2223,6 +2770,8 @@ function getJS() {
                 const data = await response.json();
 
                 let songs = [];
+                let actualPlaylistName = playlistName;
+                
                 if (data && data.playlist && data.playlist.tracks) {
                     songs = data.playlist.tracks.map(track => ({
                         name: track.name,
@@ -2233,6 +2782,11 @@ function getJS() {
                         lyric_id: track.id,
                         source: 'netease'
                     }));
+                    
+                    // 如果没有从分享链接获取到名称，使用API返回的名称
+                    if (!actualPlaylistName && data.playlist.name) {
+                        actualPlaylistName = data.playlist.name;
+                    }
                 } else if (data && data.tracks) {
                      songs = data.tracks.map(track => ({
                         name: track.name,
@@ -2249,6 +2803,15 @@ function getJS() {
                     playlistData = songs;
                     displaySearchResults(songs, 'playlistResults', playlistData);
                     showNotification(\`成功加载 \${songs.length} 首歌曲\`, 'success');
+                    
+                    // 保存到本地存储（只保存基本信息）
+                    if (actualPlaylistName) {
+                        const playlistInfo = {
+                            id: playlistId,
+                            name: actualPlaylistName
+                        };
+                        savePlaylistToLocal(playlistInfo);
+                    }
                 } else {
                     resultsContainer.innerHTML = \`
                         <div class="error">
@@ -2649,6 +3212,7 @@ function getJS() {
 
         window.addEventListener('load', () => {
             initPageDisplay();
+            updateSavedPlaylistTabs(); // 初始化保存的歌单
             setTimeout(() => {
                 showNotification('欢迎使用云音乐播放器！', 'success');
                 // 在移动端显示滑动提示
